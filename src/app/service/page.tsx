@@ -79,7 +79,7 @@ export default function ServicePage() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-3.5rem)] bg-background">
+    <div className="min-h-[calc(100vh-3.5rem)]">
       <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -97,7 +97,7 @@ export default function ServicePage() {
             </p>
           </CardContent>
         </Card>
-        <ul className="mt-6 space-y-4">
+        <ul className="mt-6 space-y-4 stagger-children">
           {entries.length === 0 && (
             <li className="rounded-lg border border-dashed border-gray-300 bg-card-bg py-12 text-center text-sm text-gray-500 dark:border-gray-600 dark:text-gray-400">
               No entries yet.

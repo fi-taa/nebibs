@@ -36,7 +36,7 @@ export default function DashboardPage() {
   );
 
   return (
-    <div className="min-h-[calc(100vh-3.5rem)] bg-background">
+    <div className="min-h-[calc(100vh-3.5rem)]">
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white sm:text-3xl">
           Dashboard
@@ -49,7 +49,7 @@ export default function DashboardPage() {
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
             Weekly summary
           </h2>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4 stagger-children">
             <Link href="/learning">
               <CardHoverable>
                 <CardContent className="p-4">
@@ -120,7 +120,7 @@ export default function DashboardPage() {
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             In progress with a clear next step.
           </p>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 stagger-children">
             {withNextAction.length === 0 && (
               <Card className="sm:col-span-2 lg:col-span-3">
                 <CardContent className="py-8 text-center text-sm text-gray-500 dark:text-gray-400">
@@ -158,7 +158,7 @@ export default function DashboardPage() {
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             In progress but no next action set.
           </p>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 stagger-children">
             {blocked.length === 0 && (
               <Card className="sm:col-span-2 lg:col-span-3">
                 <CardContent className="py-8 text-center text-sm text-gray-500 dark:text-gray-400">

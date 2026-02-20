@@ -29,7 +29,7 @@ export function Header() {
               <Link
                 key={href}
                 href={href}
-                className={`transition-all duration-150 ${
+                className={`transition-all duration-200 ease-out ${
                   isActive
                     ? "text-primary dark:text-secondary"
                     : "hover:text-gray-900 dark:hover:text-white"

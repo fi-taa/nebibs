@@ -24,7 +24,7 @@ export function Collapsible({
       >
         {title}
         <svg
-          className={`h-4 w-4 shrink-0 transition-transform duration-150 ${open ? "rotate-180" : ""}`}
+          className={`h-4 w-4 shrink-0 transition-transform duration-200 ease-out ${open ? "rotate-180" : ""}`}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"

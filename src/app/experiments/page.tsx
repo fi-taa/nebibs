@@ -114,7 +114,7 @@ export default function ExperimentsPage() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-3.5rem)] bg-background">
+    <div className="min-h-[calc(100vh-3.5rem)]">
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -174,11 +174,11 @@ export default function ExperimentsPage() {
                   </th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="stagger-children">
                 {filtered.map((item) => (
                   <tr
                     key={item.id}
-                    className="border-b border-gray-100 dark:border-gray-700 transition-all duration-150 hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                    className="border-b border-gray-100 dark:border-gray-700 transition-all duration-200 ease-out hover:bg-gray-50 dark:hover:bg-gray-800/50"
                   >
                     <td className="p-4 font-medium text-gray-900 dark:text-white">
                       {item.title}
@@ -223,10 +223,10 @@ export default function ExperimentsPage() {
           </div>
         )}
         {viewMode === "cards" && (
-          <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 stagger-children">
             {filtered.map((item) => (
               <li key={item.id}>
-                <Card className="transition-all duration-150 hover:-translate-y-0.5 hover:shadow-lg">
+                <Card className="transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg">
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between gap-2">
                       <h2 className="font-semibold text-gray-900 dark:text-white">

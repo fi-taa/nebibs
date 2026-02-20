@@ -27,15 +27,15 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in"
       aria-modal
       role="dialog"
     >
       <div
-        className="absolute inset-0 bg-black/50 dark:bg-black/70"
+        className="absolute inset-0 bg-black/50 dark:bg-black/70 animate-fade-in"
         onClick={onClose}
       />
-      <div className="relative w-full max-w-lg rounded-lg border border-gray-200 bg-card-bg shadow-xl dark:border-gray-700">
+      <div className="relative w-full max-w-lg rounded-lg border border-gray-200 bg-card-bg shadow-xl dark:border-gray-700 animate-scale-in">
         {title && (
           <div className="border-b border-gray-200 px-4 py-3 dark:border-gray-700">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">

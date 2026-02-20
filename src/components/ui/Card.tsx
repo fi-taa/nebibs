@@ -8,7 +8,7 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
   ({ children, className = "", ...props }, ref) => (
     <div
       ref={ref}
-      className={`rounded-lg bg-card-bg shadow-md transition-all duration-150 border border-gray-200/80 dark:border-gray-700/80 ${className}`}
+      className={`rounded-lg bg-card-bg shadow-md transition-all duration-200 ease-out border border-gray-200/80 dark:border-gray-700/80 ${className}`}
       {...props}
     >
       {children}
@@ -24,7 +24,7 @@ export function CardHoverable({
 }: React.HTMLAttributes<HTMLDivElement> & { children: React.ReactNode }) {
   return (
     <div
-      className={`rounded-lg bg-card-bg shadow-md transition-all duration-150 border border-gray-200/80 dark:border-gray-700/80 hover:-translate-y-0.5 hover:shadow-lg ${className}`}
+      className={`rounded-lg bg-card-bg shadow-md transition-all duration-200 ease-out border border-gray-200/80 dark:border-gray-700/80 hover:-translate-y-0.5 hover:scale-[1.01] hover:shadow-lg active:scale-[0.99] ${className}`}
       {...props}
     >
       {children}

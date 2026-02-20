@@ -64,7 +64,7 @@ export default function LearningPage() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-3.5rem)] bg-background">
+    <div className="min-h-[calc(100vh-3.5rem)]">
       <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -74,7 +74,7 @@ export default function LearningPage() {
         </div>
 
         <div className="mt-6 grid gap-6 lg:grid-cols-[320px_1fr]">
-          <aside className="space-y-2">
+          <aside className="space-y-2 stagger-children">
             {goals.length === 0 && (
               <Card>
                 <CardContent className="py-8 text-center text-sm text-gray-500 dark:text-gray-400">
@@ -87,10 +87,10 @@ export default function LearningPage() {
                 key={g.id}
                 type="button"
                 onClick={() => setSelectedId(g.id)}
-                className={`w-full rounded-lg border px-4 py-3 text-left transition-all duration-150 ${
+                className={`w-full rounded-lg border px-4 py-3 text-left transition-all duration-200 ease-out ${
                   selectedId === g.id
                     ? "border-primary bg-card-bg shadow-md dark:border-secondary"
-                    : "border-gray-200 bg-card-bg hover:-translate-y-0.5 hover:shadow-md dark:border-gray-700"
+                    : "border-gray-200 bg-card-bg hover:-translate-y-0.5 hover:shadow-md active:scale-[0.99] dark:border-gray-700"
                 }`}
               >
                 <div className="flex items-center justify-between">

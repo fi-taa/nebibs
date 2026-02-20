@@ -6,16 +6,30 @@ function now(): string {
   return new Date().toISOString();
 }
 
+function generateId(): string {
+  return Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
+
+const TEMP_ID_PREFIX = "temp-";
+
 interface LearningState {
   goals: LearningGoal[];
   loading: boolean;
   error: string | null;
+  creatingGoal: boolean;
+  updatingGoalId: string | null;
+  deletingGoalId: string | null;
+  optimisticDeletedGoal: LearningGoal | null;
 }
 
 const initialState: LearningState = {
   goals: [],
   loading: false,
   error: null,
+  creatingGoal: false,
+  updatingGoalId: null,
+  deletingGoalId: null,
+  optimisticDeletedGoal: null,
 };
 
 export const fetchGoals = createAsyncThunk(
@@ -71,6 +85,41 @@ export const learningSlice = createSlice({
   reducers: {
     clearError: (state) => {
       state.error = null;
+    },
+    addGoalOptimistic: (
+      state,
+      action: {
+        payload: { title: string; targetHours?: number; notes?: string };
+      }
+    ) => {
+      const temp: LearningGoal = {
+        id: TEMP_ID_PREFIX + Date.now(),
+        title: action.payload.title,
+        targetHours: action.payload.targetHours,
+        progressPercent: 0,
+        notes: action.payload.notes ?? "",
+        resources: [],
+        weeklyHours: [],
+        createdAt: now(),
+        updatedAt: now(),
+      };
+      state.goals.unshift(temp);
+    },
+    revertOptimisticCreate: (state) => {
+      state.goals = state.goals.filter((g) => !g.id.startsWith(TEMP_ID_PREFIX));
+    },
+    deleteGoalOptimistic: (state, action: { payload: string }) => {
+      const idx = state.goals.findIndex((g) => g.id === action.payload);
+      if (idx !== -1) {
+        state.optimisticDeletedGoal = state.goals[idx];
+        state.goals.splice(idx, 1);
+      }
+    },
+    revertOptimisticDelete: (state) => {
+      if (state.optimisticDeletedGoal) {
+        state.goals.push(state.optimisticDeletedGoal);
+        state.optimisticDeletedGoal = null;
+      }
     },
     addGoal: (
       state,
@@ -169,30 +218,62 @@ export const learningSlice = createSlice({
         state.loading = false;
         state.error = action.error.message ?? "Failed to fetch goals";
       })
+      .addCase(createGoal.pending, (state) => {
+        state.creatingGoal = true;
+      })
       .addCase(createGoal.fulfilled, (state, action) => {
-        state.goals.unshift(action.payload);
+        state.creatingGoal = false;
+        const tempIdx = state.goals.findIndex((g) =>
+          g.id.startsWith(TEMP_ID_PREFIX)
+        );
+        if (tempIdx !== -1) {
+          state.goals[tempIdx] = action.payload;
+        } else {
+          state.goals.unshift(action.payload);
+        }
       })
       .addCase(createGoal.rejected, (state, action) => {
+        state.creatingGoal = false;
         state.error = action.error.message ?? "Failed to create goal";
+        state.goals = state.goals.filter((g) => !g.id.startsWith(TEMP_ID_PREFIX));
+      })
+      .addCase(updateGoalThunk.pending, (state, action) => {
+        state.updatingGoalId = action.meta.arg.id;
       })
       .addCase(updateGoalThunk.fulfilled, (state, action) => {
+        state.updatingGoalId = null;
         const i = state.goals.findIndex((g) => g.id === action.payload.id);
         if (i !== -1) state.goals[i] = action.payload;
       })
       .addCase(updateGoalThunk.rejected, (state, action) => {
+        state.updatingGoalId = null;
         state.error = action.error.message ?? "Failed to update goal";
       })
+      .addCase(deleteGoalThunk.pending, (state, action) => {
+        state.deletingGoalId = action.meta.arg;
+      })
       .addCase(deleteGoalThunk.fulfilled, (state, action) => {
+        state.deletingGoalId = null;
+        state.optimisticDeletedGoal = null;
         state.goals = state.goals.filter((g) => g.id !== action.meta.arg);
       })
       .addCase(deleteGoalThunk.rejected, (state, action) => {
+        state.deletingGoalId = null;
         state.error = action.error.message ?? "Failed to delete goal";
+        if (state.optimisticDeletedGoal) {
+          state.goals.push(state.optimisticDeletedGoal);
+          state.optimisticDeletedGoal = null;
+        }
       });
   },
 });
 
 export const {
   addGoal,
+  addGoalOptimistic,
+  revertOptimisticCreate,
+  deleteGoalOptimistic,
+  revertOptimisticDelete,
   updateGoal,
   deleteGoal,
   addResource,

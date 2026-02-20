@@ -5,9 +5,10 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   fetchExperiments,
   createExperimentThunk,
+  addExperimentOptimistic,
   updateExperimentThunk,
   deleteExperimentThunk,
-  setStatus,
+  deleteExperimentOptimistic,
 } from "@/store/slices/experimentsSlice";
 import type { ExperimentStatus } from "@/store/types";
 import { Button } from "@/components/ui/Button";
@@ -35,6 +36,15 @@ function statusVariant(
 export default function ExperimentsPage() {
   const dispatch = useAppDispatch();
   const items = useAppSelector((s) => s.experiments.items);
+  const creatingExperiment = useAppSelector(
+    (s) => s.experiments.creatingExperiment
+  );
+  const updatingExperimentId = useAppSelector(
+    (s) => s.experiments.updatingExperimentId
+  );
+  const deletingExperimentId = useAppSelector(
+    (s) => s.experiments.deletingExperimentId
+  );
   const [statusFilter, setStatusFilter] = useState<ExperimentStatus | "">("");
   const [viewMode, setViewMode] = useState<"table" | "cards">("table");
   const [modalOpen, setModalOpen] = useState(false);
@@ -91,29 +101,24 @@ export default function ExperimentsPage() {
       .split(",")
       .map((s) => s.trim())
       .filter(Boolean);
+    const payload = {
+      title: formTitle.trim(),
+      description: formDescription.trim(),
+      dependencies: deps,
+      nextAction: formNextAction.trim(),
+      status: formStatus,
+      notes: formNotes.trim(),
+    };
     if (editingId) {
       void dispatch(
         updateExperimentThunk({
           id: editingId,
-          title: formTitle.trim(),
-          description: formDescription.trim(),
-          dependencies: deps,
-          nextAction: formNextAction.trim(),
-          status: formStatus,
-          notes: formNotes.trim(),
+          ...payload,
         })
       );
     } else {
-      void dispatch(
-        createExperimentThunk({
-          title: formTitle.trim(),
-          description: formDescription.trim(),
-          dependencies: deps,
-          nextAction: formNextAction.trim(),
-          status: formStatus,
-          notes: formNotes.trim(),
-        })
-      );
+      dispatch(addExperimentOptimistic(payload));
+      void dispatch(createExperimentThunk(payload));
     }
     setModalOpen(false);
   }
@@ -154,7 +159,12 @@ export default function ExperimentsPage() {
                 Cards
               </button>
             </div>
-            <Button onClick={openAdd}>Add idea</Button>
+            <Button
+              onClick={openAdd}
+              disabled={creatingExperiment}
+            >
+              {creatingExperiment ? "Adding…" : "Add idea"}
+            </Button>
           </div>
         </div>
         {viewMode === "table" && (
@@ -205,15 +215,26 @@ export default function ExperimentsPage() {
                         variant="ghost"
                         size="sm"
                         onClick={() => openEdit(item)}
+                        disabled={
+                          updatingExperimentId === item.id ||
+                          deletingExperimentId === item.id
+                        }
                       >
                         Edit
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => void dispatch(deleteExperimentThunk(item.id))}
+                        onClick={() => {
+                          dispatch(deleteExperimentOptimistic(item.id));
+                          void dispatch(deleteExperimentThunk(item.id));
+                        }}
+                        disabled={
+                          updatingExperimentId === item.id ||
+                          deletingExperimentId === item.id
+                        }
                       >
-                        Delete
+                        {deletingExperimentId === item.id ? "Deleting…" : "Delete"}
                       </Button>
                     </td>
                   </tr>
@@ -262,15 +283,26 @@ export default function ExperimentsPage() {
                         variant="ghost"
                         size="sm"
                         onClick={() => openEdit(item)}
+                        disabled={
+                          updatingExperimentId === item.id ||
+                          deletingExperimentId === item.id
+                        }
                       >
                         Edit
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => void dispatch(deleteExperimentThunk(item.id))}
+                        onClick={() => {
+                          dispatch(deleteExperimentOptimistic(item.id));
+                          void dispatch(deleteExperimentThunk(item.id));
+                        }}
+                        disabled={
+                          updatingExperimentId === item.id ||
+                          deletingExperimentId === item.id
+                        }
                       >
-                        Delete
+                        {deletingExperimentId === item.id ? "Deleting…" : "Delete"}
                       </Button>
                     </div>
                   </CardContent>
@@ -331,11 +363,31 @@ export default function ExperimentsPage() {
               rows={2}
             />
             <div className="flex justify-end gap-2">
-              <Button variant="secondary" onClick={() => setModalOpen(false)}>
+              <Button
+                variant="secondary"
+                onClick={() => setModalOpen(false)}
+                disabled={
+                  creatingExperiment ||
+                  (editingId != null && updatingExperimentId === editingId)
+                }
+              >
                 Cancel
               </Button>
-              <Button onClick={handleSubmit}>
-                {editingId ? "Save" : "Add"}
+              <Button
+                onClick={handleSubmit}
+                disabled={
+                  creatingExperiment ||
+                  (editingId != null && updatingExperimentId === editingId)
+                }
+              >
+                {creatingExperiment ||
+                (editingId != null && updatingExperimentId === editingId)
+                  ? editingId
+                    ? "Saving…"
+                    : "Adding…"
+                  : editingId
+                    ? "Save"
+                    : "Add"}
               </Button>
             </div>
           </div>

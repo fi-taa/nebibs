@@ -6,16 +6,26 @@ function now(): string {
   return new Date().toISOString();
 }
 
+const TEMP_ID_PREFIX = "temp-";
+
 interface ServiceState {
   entries: ServiceEntry[];
   loading: boolean;
   error: string | null;
+  creatingEntry: boolean;
+  updatingEntryId: string | null;
+  deletingEntryId: string | null;
+  optimisticDeletedEntry: ServiceEntry | null;
 }
 
 const initialState: ServiceState = {
   entries: [],
   loading: false,
   error: null,
+  creatingEntry: false,
+  updatingEntryId: null,
+  deletingEntryId: null,
+  optimisticDeletedEntry: null,
 };
 
 export const fetchServiceEntries = createAsyncThunk(
@@ -68,6 +78,36 @@ export const serviceSlice = createSlice({
   reducers: {
     clearError: (state) => {
       state.error = null;
+    },
+    addEntryOptimistic: (
+      state,
+      action: {
+        payload: {
+          date: string;
+          description: string;
+          hours: number;
+          reflection?: string;
+        };
+      }
+    ) => {
+      const p = action.payload;
+      const temp: ServiceEntry = {
+        id: TEMP_ID_PREFIX + Date.now(),
+        date: p.date,
+        description: p.description,
+        hours: p.hours,
+        reflection: p.reflection ?? "",
+        createdAt: now(),
+        updatedAt: now(),
+      };
+      state.entries.unshift(temp);
+    },
+    deleteEntryOptimistic: (state, action: { payload: string }) => {
+      const idx = state.entries.findIndex((x) => x.id === action.payload);
+      if (idx !== -1) {
+        state.optimisticDeletedEntry = state.entries[idx];
+        state.entries.splice(idx, 1);
+      }
     },
     addEntry: (
       state,
@@ -132,30 +172,62 @@ export const serviceSlice = createSlice({
         state.loading = false;
         state.error = action.error.message ?? "Failed to fetch entries";
       })
+      .addCase(createServiceEntryThunk.pending, (state) => {
+        state.creatingEntry = true;
+      })
       .addCase(createServiceEntryThunk.fulfilled, (state, action) => {
-        state.entries.unshift(action.payload);
+        state.creatingEntry = false;
+        const tempIdx = state.entries.findIndex((x) =>
+          x.id.startsWith(TEMP_ID_PREFIX)
+        );
+        if (tempIdx !== -1) {
+          state.entries[tempIdx] = action.payload;
+        } else {
+          state.entries.unshift(action.payload);
+        }
       })
       .addCase(createServiceEntryThunk.rejected, (state, action) => {
+        state.creatingEntry = false;
         state.error = action.error.message ?? "Failed to create entry";
+        state.entries = state.entries.filter(
+          (x) => !x.id.startsWith(TEMP_ID_PREFIX)
+        );
+      })
+      .addCase(updateServiceEntryThunk.pending, (state, action) => {
+        state.updatingEntryId = action.meta.arg.id;
       })
       .addCase(updateServiceEntryThunk.fulfilled, (state, action) => {
+        state.updatingEntryId = null;
         const i = state.entries.findIndex((x) => x.id === action.payload.id);
         if (i !== -1) state.entries[i] = action.payload;
       })
       .addCase(updateServiceEntryThunk.rejected, (state, action) => {
+        state.updatingEntryId = null;
         state.error = action.error.message ?? "Failed to update entry";
       })
+      .addCase(deleteServiceEntryThunk.pending, (state, action) => {
+        state.deletingEntryId = action.meta.arg;
+      })
       .addCase(deleteServiceEntryThunk.fulfilled, (state, action) => {
+        state.deletingEntryId = null;
+        state.optimisticDeletedEntry = null;
         state.entries = state.entries.filter((x) => x.id !== action.meta.arg);
       })
       .addCase(deleteServiceEntryThunk.rejected, (state, action) => {
+        state.deletingEntryId = null;
         state.error = action.error.message ?? "Failed to delete entry";
+        if (state.optimisticDeletedEntry) {
+          state.entries.push(state.optimisticDeletedEntry);
+          state.optimisticDeletedEntry = null;
+        }
       });
   },
 });
 
 export const {
   addEntry,
+  addEntryOptimistic,
+  deleteEntryOptimistic,
   updateEntry,
   deleteEntry,
   clearError,

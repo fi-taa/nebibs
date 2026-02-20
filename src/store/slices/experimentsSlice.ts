@@ -6,16 +6,26 @@ function now(): string {
   return new Date().toISOString();
 }
 
+const TEMP_ID_PREFIX = "temp-";
+
 interface ExperimentsState {
   items: Experiment[];
   loading: boolean;
   error: string | null;
+  creatingExperiment: boolean;
+  updatingExperimentId: string | null;
+  deletingExperimentId: string | null;
+  optimisticDeletedExperiment: Experiment | null;
 }
 
 const initialState: ExperimentsState = {
   items: [],
   loading: false,
   error: null,
+  creatingExperiment: false,
+  updatingExperimentId: null,
+  deletingExperimentId: null,
+  optimisticDeletedExperiment: null,
 };
 
 export const fetchExperiments = createAsyncThunk(
@@ -76,6 +86,40 @@ export const experimentsSlice = createSlice({
   reducers: {
     clearError: (state) => {
       state.error = null;
+    },
+    addExperimentOptimistic: (
+      state,
+      action: {
+        payload: {
+          title: string;
+          description?: string;
+          dependencies?: string[];
+          nextAction?: string;
+          status?: ExperimentStatus;
+          notes?: string;
+        };
+      }
+    ) => {
+      const p = action.payload;
+      const temp: Experiment = {
+        id: TEMP_ID_PREFIX + Date.now(),
+        title: p.title,
+        description: p.description ?? "",
+        dependencies: p.dependencies ?? [],
+        nextAction: p.nextAction ?? "",
+        status: p.status ?? "not_started",
+        notes: p.notes ?? "",
+        createdAt: now(),
+        updatedAt: now(),
+      };
+      state.items.unshift(temp);
+    },
+    deleteExperimentOptimistic: (state, action: { payload: string }) => {
+      const idx = state.items.findIndex((x) => x.id === action.payload);
+      if (idx !== -1) {
+        state.optimisticDeletedExperiment = state.items[idx];
+        state.items.splice(idx, 1);
+      }
     },
     addExperiment: (
       state,
@@ -159,30 +203,62 @@ export const experimentsSlice = createSlice({
         state.loading = false;
         state.error = action.error.message ?? "Failed to fetch experiments";
       })
+      .addCase(createExperimentThunk.pending, (state) => {
+        state.creatingExperiment = true;
+      })
       .addCase(createExperimentThunk.fulfilled, (state, action) => {
-        state.items.unshift(action.payload);
+        state.creatingExperiment = false;
+        const tempIdx = state.items.findIndex((x) =>
+          x.id.startsWith(TEMP_ID_PREFIX)
+        );
+        if (tempIdx !== -1) {
+          state.items[tempIdx] = action.payload;
+        } else {
+          state.items.unshift(action.payload);
+        }
       })
       .addCase(createExperimentThunk.rejected, (state, action) => {
+        state.creatingExperiment = false;
         state.error = action.error.message ?? "Failed to create experiment";
+        state.items = state.items.filter(
+          (x) => !x.id.startsWith(TEMP_ID_PREFIX)
+        );
+      })
+      .addCase(updateExperimentThunk.pending, (state, action) => {
+        state.updatingExperimentId = action.meta.arg.id;
       })
       .addCase(updateExperimentThunk.fulfilled, (state, action) => {
+        state.updatingExperimentId = null;
         const i = state.items.findIndex((x) => x.id === action.payload.id);
         if (i !== -1) state.items[i] = action.payload;
       })
       .addCase(updateExperimentThunk.rejected, (state, action) => {
+        state.updatingExperimentId = null;
         state.error = action.error.message ?? "Failed to update experiment";
       })
+      .addCase(deleteExperimentThunk.pending, (state, action) => {
+        state.deletingExperimentId = action.meta.arg;
+      })
       .addCase(deleteExperimentThunk.fulfilled, (state, action) => {
+        state.deletingExperimentId = null;
+        state.optimisticDeletedExperiment = null;
         state.items = state.items.filter((x) => x.id !== action.meta.arg);
       })
       .addCase(deleteExperimentThunk.rejected, (state, action) => {
+        state.deletingExperimentId = null;
         state.error = action.error.message ?? "Failed to delete experiment";
+        if (state.optimisticDeletedExperiment) {
+          state.items.push(state.optimisticDeletedExperiment);
+          state.optimisticDeletedExperiment = null;
+        }
       });
   },
 });
 
 export const {
   addExperiment,
+  addExperimentOptimistic,
+  deleteExperimentOptimistic,
   updateExperiment,
   deleteExperiment,
   setStatus,

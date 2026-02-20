@@ -5,8 +5,10 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   fetchServiceEntries,
   createServiceEntryThunk,
+  addEntryOptimistic,
   updateServiceEntryThunk,
   deleteServiceEntryThunk,
+  deleteEntryOptimistic,
 } from "@/store/slices/serviceSlice";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
@@ -24,6 +26,9 @@ export default function ServicePage() {
   const totalHours = useAppSelector((s) =>
     s.service.entries.reduce((sum, e) => sum + e.hours, 0)
   );
+  const creatingEntry = useAppSelector((s) => s.service.creatingEntry);
+  const updatingEntryId = useAppSelector((s) => s.service.updatingEntryId);
+  const deletingEntryId = useAppSelector((s) => s.service.deletingEntryId);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [date, setDate] = useState(
@@ -64,25 +69,22 @@ export default function ServicePage() {
   function handleSubmit() {
     const h = Number(hours);
     if (!description.trim() || Number.isNaN(h) || h < 0) return;
+    const payload = {
+      date,
+      description: description.trim(),
+      hours: h,
+      reflection: reflection.trim(),
+    };
     if (editingId) {
       void dispatch(
         updateServiceEntryThunk({
           id: editingId,
-          date,
-          description: description.trim(),
-          hours: h,
-          reflection: reflection.trim(),
+          ...payload,
         })
       );
     } else {
-      void dispatch(
-        createServiceEntryThunk({
-          date,
-          description: description.trim(),
-          hours: h,
-          reflection: reflection.trim(),
-        })
-      );
+      dispatch(addEntryOptimistic(payload));
+      void dispatch(createServiceEntryThunk(payload));
     }
     setModalOpen(false);
   }
@@ -94,7 +96,9 @@ export default function ServicePage() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
             Service
           </h1>
-          <Button onClick={openAdd}>Add entry</Button>
+          <Button onClick={openAdd} disabled={creatingEntry}>
+            {creatingEntry ? "Adding…" : "Add entry"}
+          </Button>
         </div>
         <Card className="mt-6">
           <CardContent className="p-4">
@@ -135,15 +139,26 @@ export default function ServicePage() {
                         variant="ghost"
                         size="sm"
                         onClick={() => openEdit(entry)}
+                        disabled={
+                          updatingEntryId === entry.id ||
+                          deletingEntryId === entry.id
+                        }
                       >
                         Edit
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => void dispatch(deleteServiceEntryThunk(entry.id))}
+                        onClick={() => {
+                          dispatch(deleteEntryOptimistic(entry.id));
+                          void dispatch(deleteServiceEntryThunk(entry.id));
+                        }}
+                        disabled={
+                          updatingEntryId === entry.id ||
+                          deletingEntryId === entry.id
+                        }
                       >
-                        Delete
+                        {deletingEntryId === entry.id ? "Deleting…" : "Delete"}
                       </Button>
                     </div>
                   </div>
@@ -187,11 +202,31 @@ export default function ServicePage() {
               rows={3}
             />
             <div className="flex justify-end gap-2">
-              <Button variant="secondary" onClick={() => setModalOpen(false)}>
+              <Button
+                variant="secondary"
+                onClick={() => setModalOpen(false)}
+                disabled={
+                  creatingEntry ||
+                  (editingId != null && updatingEntryId === editingId)
+                }
+              >
                 Cancel
               </Button>
-              <Button onClick={handleSubmit}>
-                {editingId ? "Save" : "Add"}
+              <Button
+                onClick={handleSubmit}
+                disabled={
+                  creatingEntry ||
+                  (editingId != null && updatingEntryId === editingId)
+                }
+              >
+                {creatingEntry ||
+                (editingId != null && updatingEntryId === editingId)
+                  ? editingId
+                    ? "Saving…"
+                    : "Adding…"
+                  : editingId
+                    ? "Save"
+                    : "Add"}
               </Button>
             </div>
           </div>

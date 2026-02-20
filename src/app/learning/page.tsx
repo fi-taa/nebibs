@@ -5,8 +5,10 @@ import { useSearchParams } from "next/navigation";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   createGoal,
+  addGoalOptimistic,
   updateGoalThunk,
   deleteGoalThunk,
+  deleteGoalOptimistic,
   fetchGoals,
 } from "@/store/slices/learningSlice";
 import { Button } from "@/components/ui/Button";
@@ -27,6 +29,9 @@ export default function LearningPage() {
   const idFromUrl = searchParams.get("id");
   const dispatch = useAppDispatch();
   const goals = useAppSelector((s) => s.learning.goals);
+  const creatingGoal = useAppSelector((s) => s.learning.creatingGoal);
+  const updatingGoalId = useAppSelector((s) => s.learning.updatingGoalId);
+  const deletingGoalId = useAppSelector((s) => s.learning.deletingGoalId);
   const [selectedId, setSelectedId] = useState<string | null>(idFromUrl);
   const [modalOpen, setModalOpen] = useState(false);
   const [title, setTitle] = useState("");
@@ -52,13 +57,13 @@ export default function LearningPage() {
 
   function handleAdd() {
     if (!title.trim()) return;
-    void dispatch(
-      createGoal({
-        title: title.trim(),
-        targetHours: targetHours ? Number(targetHours) : undefined,
-        notes: notes.trim() || undefined,
-      })
-    );
+    const payload = {
+      title: title.trim(),
+      targetHours: targetHours ? Number(targetHours) : undefined,
+      notes: notes.trim() || undefined,
+    };
+    dispatch(addGoalOptimistic(payload));
+    void dispatch(createGoal(payload));
     setTitle("");
     setTargetHours("");
     setNotes("");
@@ -72,7 +77,12 @@ export default function LearningPage() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
             Learning
           </h1>
-          <Button onClick={() => setModalOpen(true)}>Add goal</Button>
+          <Button
+            onClick={() => setModalOpen(true)}
+            disabled={creatingGoal}
+          >
+            {creatingGoal ? "Adding…" : "Add goal"}
+          </Button>
         </div>
 
         <div className="mt-6 grid gap-6 lg:grid-cols-[320px_1fr]">
@@ -123,6 +133,8 @@ export default function LearningPage() {
               <LearningDetailPanel
                 goal={selected}
                 onDelete={() => setSelectedId(null)}
+                updatingGoalId={updatingGoalId}
+                deletingGoalId={deletingGoalId}
               />
             )}
           </div>
@@ -155,10 +167,16 @@ export default function LearningPage() {
               placeholder="Initial notes"
             />
             <div className="flex justify-end gap-2">
-              <Button variant="secondary" onClick={() => setModalOpen(false)}>
+              <Button
+                variant="secondary"
+                onClick={() => setModalOpen(false)}
+                disabled={creatingGoal}
+              >
                 Cancel
               </Button>
-              <Button onClick={handleAdd}>Add</Button>
+              <Button onClick={handleAdd} disabled={creatingGoal}>
+                {creatingGoal ? "Adding…" : "Add"}
+              </Button>
             </div>
           </div>
         </Modal>
@@ -170,6 +188,8 @@ export default function LearningPage() {
 function LearningDetailPanel({
   goal,
   onDelete,
+  updatingGoalId,
+  deletingGoalId,
 }: {
   goal: {
     id: string;
@@ -181,6 +201,8 @@ function LearningDetailPanel({
     weeklyHours: { weekKey: string; hours: number }[];
   };
   onDelete: () => void;
+  updatingGoalId: string | null;
+  deletingGoalId: string | null;
 }) {
   const dispatch = useAppDispatch();
   const [editTitle, setEditTitle] = useState(goal.title);
@@ -189,6 +211,8 @@ function LearningDetailPanel({
   const [newResource, setNewResource] = useState("");
   const [weeklyHours, setWeeklyHours] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const isUpdating = updatingGoalId === goal.id;
+  const isDeleting = deletingGoalId === goal.id;
 
   useEffect(() => {
     setEditTitle(goal.title);
@@ -235,6 +259,7 @@ function LearningDetailPanel({
   }
 
   function handleDelete() {
+    dispatch(deleteGoalOptimistic(goal.id));
     void dispatch(deleteGoalThunk(goal.id));
     setDeleteConfirm(false);
     onDelete();
@@ -291,8 +316,12 @@ function LearningDetailPanel({
                   e.key === "Enter" && (e.preventDefault(), handleAddResource())
                 }
               />
-              <Button variant="secondary" onClick={handleAddResource}>
-                Add
+              <Button
+                variant="secondary"
+                onClick={handleAddResource}
+                disabled={isUpdating}
+              >
+                {isUpdating ? "Saving…" : "Add"}
               </Button>
             </div>
             <ul className="mt-3 space-y-2">
@@ -338,8 +367,12 @@ function LearningDetailPanel({
                 value={weeklyHours}
                 onChange={(e) => setWeeklyHours(e.target.value)}
               />
-              <Button variant="secondary" onClick={handleLogHours}>
-                Log
+              <Button
+                variant="secondary"
+                onClick={handleLogHours}
+                disabled={isUpdating}
+              >
+                {isUpdating ? "Saving…" : "Log"}
               </Button>
             </div>
           </Collapsible>
@@ -348,8 +381,9 @@ function LearningDetailPanel({
             <Button
               variant="danger"
               onClick={() => setDeleteConfirm(true)}
+              disabled={isUpdating || isDeleting}
             >
-              Delete goal
+              {isDeleting ? "Deleting…" : "Delete goal"}
             </Button>
           </div>
         </CardContent>
@@ -364,11 +398,19 @@ function LearningDetailPanel({
           This cannot be undone.
         </p>
         <div className="mt-4 flex justify-end gap-2">
-          <Button variant="secondary" onClick={() => setDeleteConfirm(false)}>
+          <Button
+            variant="secondary"
+            onClick={() => setDeleteConfirm(false)}
+            disabled={isDeleting}
+          >
             Cancel
           </Button>
-          <Button variant="danger" onClick={handleDelete}>
-            Delete
+          <Button
+            variant="danger"
+            onClick={handleDelete}
+            disabled={isDeleting}
+          >
+            {isDeleting ? "Deleting…" : "Delete"}
           </Button>
         </div>
       </Modal>

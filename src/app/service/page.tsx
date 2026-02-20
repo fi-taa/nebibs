@@ -1,8 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { addEntry, updateEntry, deleteEntry } from "@/store/slices/serviceSlice";
+import {
+  fetchServiceEntries,
+  createServiceEntryThunk,
+  updateServiceEntryThunk,
+  deleteServiceEntryThunk,
+} from "@/store/slices/serviceSlice";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
@@ -52,12 +57,16 @@ export default function ServicePage() {
     setModalOpen(true);
   }
 
+  useEffect(() => {
+    void dispatch(fetchServiceEntries());
+  }, [dispatch]);
+
   function handleSubmit() {
     const h = Number(hours);
     if (!description.trim() || Number.isNaN(h) || h < 0) return;
     if (editingId) {
-      dispatch(
-        updateEntry({
+      void dispatch(
+        updateServiceEntryThunk({
           id: editingId,
           date,
           description: description.trim(),
@@ -66,8 +75,8 @@ export default function ServicePage() {
         })
       );
     } else {
-      dispatch(
-        addEntry({
+      void dispatch(
+        createServiceEntryThunk({
           date,
           description: description.trim(),
           hours: h,
@@ -132,7 +141,7 @@ export default function ServicePage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => dispatch(deleteEntry(entry.id))}
+                        onClick={() => void dispatch(deleteServiceEntryThunk(entry.id))}
                       >
                         Delete
                       </Button>

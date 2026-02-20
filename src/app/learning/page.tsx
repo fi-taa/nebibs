@@ -4,12 +4,10 @@ import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
-  addGoal,
-  updateGoal,
-  deleteGoal,
-  addResource,
-  removeResource,
-  logWeeklyHours,
+  createGoal,
+  updateGoalThunk,
+  deleteGoalThunk,
+  fetchGoals,
 } from "@/store/slices/learningSlice";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
@@ -38,6 +36,10 @@ export default function LearningPage() {
   const selected = goals.find((g) => g.id === selectedId);
 
   useEffect(() => {
+    void dispatch(fetchGoals());
+  }, [dispatch]);
+
+  useEffect(() => {
     if (idFromUrl && goals.some((g) => g.id === idFromUrl))
       setSelectedId(idFromUrl);
   }, [idFromUrl, goals]);
@@ -50,8 +52,8 @@ export default function LearningPage() {
 
   function handleAdd() {
     if (!title.trim()) return;
-    dispatch(
-      addGoal({
+    void dispatch(
+      createGoal({
         title: title.trim(),
         targetHours: targetHours ? Number(targetHours) : undefined,
         notes: notes.trim() || undefined,
@@ -195,8 +197,8 @@ function LearningDetailPanel({
   }, [goal.id, goal.title, goal.progressPercent, goal.notes]);
 
   function handleSave() {
-    dispatch(
-      updateGoal({
+    void dispatch(
+      updateGoalThunk({
         id: goal.id,
         title: editTitle.trim(),
         progressPercent: Math.min(100, Math.max(0, editProgress)),
@@ -207,25 +209,33 @@ function LearningDetailPanel({
 
   function handleAddResource() {
     if (!newResource.trim()) return;
-    dispatch(addResource({ goalId: goal.id, resource: newResource.trim() }));
+    void dispatch(
+      updateGoalThunk({
+        id: goal.id,
+        resources: [...goal.resources, newResource.trim()],
+      })
+    );
     setNewResource("");
   }
 
   function handleLogHours() {
     const hours = Number(weeklyHours);
     if (Number.isNaN(hours) || hours < 0) return;
-    dispatch(
-      logWeeklyHours({
-        goalId: goal.id,
-        weekKey: getWeekKey(new Date()),
-        hours,
-      })
+    const weekKey = getWeekKey(new Date());
+    const existing = goal.weeklyHours.find((w) => w.weekKey === weekKey);
+    const nextWeeklyHours = existing
+      ? goal.weeklyHours.map((w) =>
+          w.weekKey === weekKey ? { ...w, hours } : w
+        )
+      : [...goal.weeklyHours, { weekKey, hours }];
+    void dispatch(
+      updateGoalThunk({ id: goal.id, weeklyHours: nextWeeklyHours })
     );
     setWeeklyHours("");
   }
 
   function handleDelete() {
-    dispatch(deleteGoal(goal.id));
+    void dispatch(deleteGoalThunk(goal.id));
     setDeleteConfirm(false);
     onDelete();
   }
@@ -303,7 +313,12 @@ function LearningDetailPanel({
                     variant="ghost"
                     size="sm"
                     onClick={() =>
-                      dispatch(removeResource({ goalId: goal.id, index: i }))
+                      void dispatch(
+                        updateGoalThunk({
+                          id: goal.id,
+                          resources: goal.resources.filter((_, j) => j !== i),
+                        })
+                      )
                     }
                   >
                     Remove

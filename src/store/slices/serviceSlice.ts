@@ -1,9 +1,6 @@
-import { createSlice } from "@reduxjs/toolkit";
+import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
+import { serviceApi } from "@/lib/api";
 import type { ServiceEntry } from "../types";
-
-function generateId(): string {
-  return Math.random().toString(36).slice(2) + Date.now().toString(36);
-}
 
 function now(): string {
   return new Date().toISOString();
@@ -11,16 +8,67 @@ function now(): string {
 
 interface ServiceState {
   entries: ServiceEntry[];
+  loading: boolean;
+  error: string | null;
 }
 
 const initialState: ServiceState = {
   entries: [],
+  loading: false,
+  error: null,
 };
+
+export const fetchServiceEntries = createAsyncThunk(
+  "service/fetch",
+  () => serviceApi.list()
+);
+
+export const createServiceEntryThunk = createAsyncThunk(
+  "service/create",
+  (payload: {
+    date: string;
+    description: string;
+    hours: number;
+    reflection?: string;
+  }) =>
+    serviceApi.create({
+      date: payload.date,
+      description: payload.description,
+      hours: payload.hours,
+      reflection: payload.reflection,
+    })
+);
+
+export const updateServiceEntryThunk = createAsyncThunk(
+  "service/update",
+  (payload: {
+    id: string;
+    date?: string;
+    description?: string;
+    hours?: number;
+    reflection?: string;
+  }) => {
+    const body: Record<string, unknown> = {};
+    if (payload.date !== undefined) body.date = payload.date;
+    if (payload.description !== undefined) body.description = payload.description;
+    if (payload.hours !== undefined) body.hours = payload.hours;
+    if (payload.reflection !== undefined) body.reflection = payload.reflection;
+    return serviceApi.update(payload.id, body);
+  }
+);
+
+export const deleteServiceEntryThunk = createAsyncThunk(
+  "service/delete",
+  (id: string) => serviceApi.delete(id)
+);
 
 export const serviceSlice = createSlice({
   name: "service",
   initialState,
   reducers: {
+    clearError: (state) => {
+      state.error = null;
+    },
     addEntry: (
       state,
       action: {
@@ -33,7 +81,7 @@ export const serviceSlice = createSlice({
       }
     ) => {
       const entry: ServiceEntry = {
-        id: generateId(),
+        id: "",
         date: action.payload.date,
         description: action.payload.description,
         hours: action.payload.hours,
@@ -69,6 +117,46 @@ export const serviceSlice = createSlice({
       state.entries = state.entries.filter((x) => x.id !== action.payload);
     },
   },
+  extraReducers: (builder) => {
+    builder
+      .addCase(fetchServiceEntries.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchServiceEntries.fulfilled, (state, action) => {
+        state.loading = false;
+        state.entries = action.payload;
+        state.error = null;
+      })
+      .addCase(fetchServiceEntries.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message ?? "Failed to fetch entries";
+      })
+      .addCase(createServiceEntryThunk.fulfilled, (state, action) => {
+        state.entries.unshift(action.payload);
+      })
+      .addCase(createServiceEntryThunk.rejected, (state, action) => {
+        state.error = action.error.message ?? "Failed to create entry";
+      })
+      .addCase(updateServiceEntryThunk.fulfilled, (state, action) => {
+        const i = state.entries.findIndex((x) => x.id === action.payload.id);
+        if (i !== -1) state.entries[i] = action.payload;
+      })
+      .addCase(updateServiceEntryThunk.rejected, (state, action) => {
+        state.error = action.error.message ?? "Failed to update entry";
+      })
+      .addCase(deleteServiceEntryThunk.fulfilled, (state, action) => {
+        state.entries = state.entries.filter((x) => x.id !== action.meta.arg);
+      })
+      .addCase(deleteServiceEntryThunk.rejected, (state, action) => {
+        state.error = action.error.message ?? "Failed to delete entry";
+      });
+  },
 });
 
-export const { addEntry, updateEntry, deleteEntry } = serviceSlice.actions;
+export const {
+  addEntry,
+  updateEntry,
+  deleteEntry,
+  clearError,
+} = serviceSlice.actions;

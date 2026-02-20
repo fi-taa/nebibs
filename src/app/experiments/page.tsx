@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
-  addExperiment,
-  updateExperiment,
-  deleteExperiment,
+  fetchExperiments,
+  createExperimentThunk,
+  updateExperimentThunk,
+  deleteExperimentThunk,
   setStatus,
 } from "@/store/slices/experimentsSlice";
 import type { ExperimentStatus } from "@/store/types";
@@ -50,6 +51,10 @@ export default function ExperimentsPage() {
     return items.filter((x) => x.status === statusFilter);
   }, [items, statusFilter]);
 
+  useEffect(() => {
+    void dispatch(fetchExperiments());
+  }, [dispatch]);
+
   function openAdd() {
     setEditingId(null);
     setFormTitle("");
@@ -87,8 +92,8 @@ export default function ExperimentsPage() {
       .map((s) => s.trim())
       .filter(Boolean);
     if (editingId) {
-      dispatch(
-        updateExperiment({
+      void dispatch(
+        updateExperimentThunk({
           id: editingId,
           title: formTitle.trim(),
           description: formDescription.trim(),
@@ -99,8 +104,8 @@ export default function ExperimentsPage() {
         })
       );
     } else {
-      dispatch(
-        addExperiment({
+      void dispatch(
+        createExperimentThunk({
           title: formTitle.trim(),
           description: formDescription.trim(),
           dependencies: deps,
@@ -206,7 +211,7 @@ export default function ExperimentsPage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => dispatch(deleteExperiment(item.id))}
+                        onClick={() => void dispatch(deleteExperimentThunk(item.id))}
                       >
                         Delete
                       </Button>
@@ -263,7 +268,7 @@ export default function ExperimentsPage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => dispatch(deleteExperiment(item.id))}
+                        onClick={() => void dispatch(deleteExperimentThunk(item.id))}
                       >
                         Delete
                       </Button>

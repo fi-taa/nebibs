@@ -1,9 +1,6 @@
-import { createSlice } from "@reduxjs/toolkit";
+import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
+import { experimentsApi } from "@/lib/api";
 import type { Experiment, ExperimentStatus } from "../types";
-
-function generateId(): string {
-  return Math.random().toString(36).slice(2) + Date.now().toString(36);
-}
 
 function now(): string {
   return new Date().toISOString();
@@ -11,16 +8,75 @@ function now(): string {
 
 interface ExperimentsState {
   items: Experiment[];
+  loading: boolean;
+  error: string | null;
 }
 
 const initialState: ExperimentsState = {
   items: [],
+  loading: false,
+  error: null,
 };
+
+export const fetchExperiments = createAsyncThunk(
+  "experiments/fetch",
+  () => experimentsApi.list()
+);
+
+export const createExperimentThunk = createAsyncThunk(
+  "experiments/create",
+  (payload: {
+    title: string;
+    description?: string;
+    dependencies?: string[];
+    nextAction?: string;
+    status?: ExperimentStatus;
+    notes?: string;
+  }) =>
+    experimentsApi.create({
+      title: payload.title,
+      description: payload.description ?? "",
+      dependencies: payload.dependencies ?? [],
+      next_action: payload.nextAction ?? "",
+      status: payload.status ?? "not_started",
+      notes: payload.notes ?? "",
+    })
+);
+
+export const updateExperimentThunk = createAsyncThunk(
+  "experiments/update",
+  (payload: {
+    id: string;
+    title?: string;
+    description?: string;
+    dependencies?: string[];
+    nextAction?: string;
+    status?: ExperimentStatus;
+    notes?: string;
+  }) => {
+    const body: Record<string, unknown> = {};
+    if (payload.title !== undefined) body.title = payload.title;
+    if (payload.description !== undefined) body.description = payload.description;
+    if (payload.dependencies !== undefined) body.dependencies = payload.dependencies;
+    if (payload.nextAction !== undefined) body.next_action = payload.nextAction;
+    if (payload.status !== undefined) body.status = payload.status;
+    if (payload.notes !== undefined) body.notes = payload.notes;
+    return experimentsApi.update(payload.id, body);
+  }
+);
+
+export const deleteExperimentThunk = createAsyncThunk(
+  "experiments/delete",
+  (id: string) => experimentsApi.delete(id)
+);
 
 export const experimentsSlice = createSlice({
   name: "experiments",
   initialState,
   reducers: {
+    clearError: (state) => {
+      state.error = null;
+    },
     addExperiment: (
       state,
       action: {
@@ -35,7 +91,7 @@ export const experimentsSlice = createSlice({
       }
     ) => {
       const item: Experiment = {
-        id: generateId(),
+        id: "",
         title: action.payload.title,
         description: action.payload.description ?? "",
         dependencies: action.payload.dependencies ?? [],
@@ -88,6 +144,41 @@ export const experimentsSlice = createSlice({
       }
     },
   },
+  extraReducers: (builder) => {
+    builder
+      .addCase(fetchExperiments.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchExperiments.fulfilled, (state, action) => {
+        state.loading = false;
+        state.items = action.payload;
+        state.error = null;
+      })
+      .addCase(fetchExperiments.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message ?? "Failed to fetch experiments";
+      })
+      .addCase(createExperimentThunk.fulfilled, (state, action) => {
+        state.items.unshift(action.payload);
+      })
+      .addCase(createExperimentThunk.rejected, (state, action) => {
+        state.error = action.error.message ?? "Failed to create experiment";
+      })
+      .addCase(updateExperimentThunk.fulfilled, (state, action) => {
+        const i = state.items.findIndex((x) => x.id === action.payload.id);
+        if (i !== -1) state.items[i] = action.payload;
+      })
+      .addCase(updateExperimentThunk.rejected, (state, action) => {
+        state.error = action.error.message ?? "Failed to update experiment";
+      })
+      .addCase(deleteExperimentThunk.fulfilled, (state, action) => {
+        state.items = state.items.filter((x) => x.id !== action.meta.arg);
+      })
+      .addCase(deleteExperimentThunk.rejected, (state, action) => {
+        state.error = action.error.message ?? "Failed to delete experiment";
+      });
+  },
 });
 
 export const {
@@ -95,4 +186,5 @@ export const {
   updateExperiment,
   deleteExperiment,
   setStatus,
+  clearError,
 } = experimentsSlice.actions;
